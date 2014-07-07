@@ -114,13 +114,35 @@ class Ramp(object):
         the leaf ``node``.
 
         """
-        # TODO: runtime?
-        if not include:
-            visited, path = self._shortest(node)
-            print 'visited: ', visited
-            print 'path: ', path
-            return path
-        return self._traverse(node, include)
+        if include is not None:
+            include = set(include)
+        else:
+            include = set()
+        # XXX:
+        import pprint
+        current_pathes = [[self.graph.root]]
+        while current_pathes:
+            print '-'*10
+            pprint.pprint(current_pathes)
+
+            # survived pathes in this iteration
+            survived_pathes = []
+            for path in current_pathes:
+                last_node = path[-1]
+                # set of visited nodes in path
+                path_nodes = set(path[:-1])
+                # see if there is any path in current_pathes already statifies
+                # our requirements
+                if last_node == node and include < path_nodes:
+                    return path
+
+                for child_node in last_node.children:
+                    # TODO: check whether can we statify this node, some nodes like
+                    # <account> needs a given object to be statified
+                    if False:
+                        continue
+                    survived_pathes.append(path[:] + [child_node])
+            current_pathes = survived_pathes
 
     def _shortest(self, destination):
         """
@@ -197,10 +219,18 @@ def test_ramp(routes):
     cards = routes.find('cards')
     r = Ramp(Graph(routes))
 
-    assert '/root/cards' == r.route(cards)
-    assert '/root/mp/cards' == r.route(cards, include=[routes.find('mp')])
-    assert '/root/accts/cards' == r.route(cards,
-                                          include=[routes.find('accts')])
-    assert '/root/mp/accts/cards' == r.route(cards, include=[
-        routes.find('accts'), routes.find('mp')
-    ])
+    def path_to_url(path):
+        return '/' + '/'.join(node.name for node in path)
+
+    assert '/root/cards' == path_to_url(r.route(cards))
+    assert '/root/mp/cards' == path_to_url(
+        r.route(cards, include=[routes.find('mp')]),
+    )
+    assert '/root/accts/cards' == path_to_url(
+        r.route(cards, include=[routes.find('accts')])
+    )
+    assert '/root/mp/accts/cards' == path_to_url(
+        r.route(cards, include=[
+            routes.find('accts'), routes.find('mp')
+        ])
+    )
