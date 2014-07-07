@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 from itertools import count
 from cStringIO import StringIO
+from collections import defaultdict
 
 import pytest
 from pyramid.location import lineage
@@ -63,6 +64,12 @@ class Node(object):
     def __str__(self):
         return self.name
 
+    def __repr__(self):
+        return 'Node(%s, parent=%s)' % (
+            self.name,
+            self.__parent__
+        )
+
     def draw(self):
         print '\n' + draw_tree(self)
 
@@ -97,7 +104,7 @@ class Ramp(object):
 
     def route(self, node, include=None):
         """
-        Given an directed acyclical graph, ``self.graph``, this method
+        Given an directed acyclic graph, ``self.graph``, this method
         will default to finding the shortest path to the desired
         ``node``.
 
@@ -109,14 +116,86 @@ class Ramp(object):
         """
         # TODO: runtime?
         if not include:
-            return self._shortest(node)
+            visited, path = self._shortest(node)
+            print 'visited: ', visited
+            print 'path: ', path
+            return path
         return self._traverse(node, include)
+
+    def _shortest(self, destination):
+        """
+        Given a graph, assume that all edges are weighted equally,
+        find the shorest path, minimizing the weight to the desired
+        node.
+
+        """
+        start = self.graph.root
+        visited = {start: 0}
+        path = {}
+
+        nodes = self.graph.nodes
+        while nodes:
+            min_node = None
+            for node in nodes:
+                if node in visited:
+                    if min_node is None:
+                        min_node = node
+                    elif visited[node] < visited[min_node]:
+                        min_node = node
+            if min_node is None:
+                break
+
+            nodes.remove(min_node)
+            current_weight = visited[min_node]
+
+            for edge in self.graph.edges[min_node]:
+                weight = current_weight + self.graph.distance[(min_node, edge)]
+                if edge not in visited or weight < visited[edge]:
+                    visited[edge] = weight
+                    path[edge] = min_node
+
+        return visited, path
+
+
+class Graph(object):
+
+    def __init__(self, root):
+        self.root = root
+        self.edges = defaultdict(list)
+        self.distance = {}
+        self._nodes = self._dfs()
+
+    @property
+    def nodes(self):
+        if not self._nodes:
+            self._nodes = self._dfs()
+        return self._nodes
+
+    def add_directed_edge(self, from_node, to_node, weight=1):
+        self.edges[from_node].append(to_node)
+        self.distance[(from_node, to_node)] = weight
+
+    def _dfs(self):
+        targets = [self.root]
+        seen = set()
+
+        while targets:
+            visiting = targets.pop(0)
+            print 'visiting %s' % visiting
+            for child in visiting.children:
+                if child not in seen:
+                    print 'havent seen %s, child of %s' % (child, visiting)
+                    self.add_directed_edge(visiting, child)
+                    targets.insert(0, child)
+            seen.add(visiting)
+            print 'marking %s as seen' % visiting
+        return seen
 
 
 def test_ramp(routes):
     routes.draw()
     cards = routes.find('cards')
-    r = Ramp(routes)
+    r = Ramp(Graph(routes))
 
     assert '/root/cards' == r.route(cards)
     assert '/root/mp/cards' == r.route(cards, include=[routes.find('mp')])
