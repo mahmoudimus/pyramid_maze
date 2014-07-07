@@ -120,18 +120,18 @@ class Ramp(object):
             include = set()
         # XXX:
         import pprint
-        current_pathes = [[self.graph.root]]
-        while current_pathes:
+        current_paths = [[self.graph.root]]
+        while current_paths:
             print '-'*10
-            pprint.pprint(current_pathes)
+            pprint.pprint(current_paths)
 
-            # survived pathes in this iteration
-            survived_pathes = []
-            for path in current_pathes:
+            # survived paths in this iteration
+            survived_paths = []
+            for path in current_paths:
                 last_node = path[-1]
                 # set of visited nodes in path
                 path_nodes = set(path[:-1])
-                # see if there is any path in current_pathes already statifies
+                # see if there is any path in current_paths already statifies
                 # our requirements
                 if last_node == node and include < path_nodes:
                     return path
@@ -141,8 +141,8 @@ class Ramp(object):
                     # <account> needs a given object to be statified
                     if False:
                         continue
-                    survived_pathes.append(path[:] + [child_node])
-            current_pathes = survived_pathes
+                    survived_paths.append(path[:] + [child_node])
+            current_paths = survived_paths
 
     def _shortest(self, destination):
         """
