@@ -118,65 +118,89 @@ class Maze(object):
             include = set(include)
         else:
             include = set()
-        # XXX:
-        import pprint
-        current_paths = [[self.graph.root]]
-        while current_paths:
-            print '-'*10
-            pprint.pprint(current_paths)
+        return iterative_deepening(self.graph, node, include)
 
-            # survived paths in this iteration
-            survived_paths = []
-            for path in current_paths:
-                last_node = path[-1]
-                # set of visited nodes in path
-                path_nodes = set(path[:-1])
-                # see if there is any path in current_paths already statifies
-                # our requirements
-                if last_node == node and include < path_nodes:
-                    return path
 
-                for child_node in last_node.children:
-                    # TODO: check whether can we statify this node, some nodes like
-                    # <account> needs a given object to be statified
-                    if False:
-                        continue
-                    survived_paths.append(path[:] + [child_node])
-            current_paths = survived_paths
+def iterative_deepening(graph, node, include):
+    # XXX:
+    import pprint
+    current_paths = [[graph.root]]
+    while current_paths:
+        print '-' * 10
+        pprint.pprint(current_paths)
 
-    def _shortest(self, destination):
-        """
-        Given a graph, assume that all edges are weighted equally,
-        find the shorest path, minimizing the weight to the desired
-        node.
+        # survived paths in this iteration
+        survived_paths = []
+        for path in current_paths:
+            last_node = path[-1]
+            # set of visited nodes in path
+            path_nodes = set(path[:-1])
+            # see if there is any path in current_paths already statifies
+            # our requirements
+            if last_node == node and include < path_nodes:
+                return path
 
-        """
-        start = self.graph.root
-        visited = {start: 0}
-        path = {}
+            for child_node in last_node.children:
+                # TODO: check whether can we statify this node, some nodes like
+                # <account> needs a given object to be statified
+                if False:
+                    continue
+                survived_paths.append(path[:] + [child_node])
+        current_paths = survived_paths
+    return current_paths
 
-        nodes = self.graph.nodes
-        while nodes:
-            min_node = None
-            for node in nodes:
-                if node in visited:
-                    if min_node is None:
-                        min_node = node
-                    elif visited[node] < visited[min_node]:
-                        min_node = node
-            if min_node is None:
-                break
 
-            nodes.remove(min_node)
-            current_weight = visited[min_node]
+def shortest_paths(graph, destination):
+    """
+    Given a graph, assume that all edges are weighted equally,
+    find the shorest path, minimizing the weight to the desired
+    node.
 
-            for edge in self.graph.edges[min_node]:
-                weight = current_weight + self.graph.distance[(min_node, edge)]
-                if edge not in visited or weight < visited[edge]:
-                    visited[edge] = weight
-                    path[edge] = min_node
+    """
+    start = graph.root
+    visited = {start: 0}
+    path = {}
 
-        return visited, path
+    nodes = self.graph.nodes
+    while nodes:
+        min_node = None
+        for node in nodes:
+            if node in visited:
+                if min_node is None:
+                    min_node = node
+                elif visited[node] < visited[min_node]:
+                    min_node = node
+
+        if min_node is None:
+            break
+
+    nodes.remove(min_node)
+    current_weight = visited[min_node]
+
+    for edge in graph.edges[min_node]:
+        weight = current_weight + graph.distance[(min_node, edge)]
+        if edge not in visited or weight < visited[edge]:
+            visited[edge] = weight
+            path[edge] = min_node
+
+    return visited, path
+
+
+def depth_first_search(graph):
+    targets = [graph.root]
+    seen = set()
+
+    while targets:
+        visiting = targets.pop(0)
+        print 'visiting %s' % visiting
+        for child in visiting.children:
+            if child not in seen:
+                print 'havent seen %s, child of %s' % (child, visiting)
+                graph.add_directed_edge(visiting, child)
+                targets.insert(0, child)
+        seen.add(visiting)
+        print 'marking %s as seen' % visiting
+    return seen
 
 
 class Graph(object):
@@ -185,7 +209,7 @@ class Graph(object):
         self.root = root
         self.edges = defaultdict(list)
         self.distance = {}
-        self._nodes = self._dfs()
+        self._nodes = depth_first_search(self)
 
     @property
     def nodes(self):
@@ -196,22 +220,6 @@ class Graph(object):
     def add_directed_edge(self, from_node, to_node, weight=1):
         self.edges[from_node].append(to_node)
         self.distance[(from_node, to_node)] = weight
-
-    def _dfs(self):
-        targets = [self.root]
-        seen = set()
-
-        while targets:
-            visiting = targets.pop(0)
-            print 'visiting %s' % visiting
-            for child in visiting.children:
-                if child not in seen:
-                    print 'havent seen %s, child of %s' % (child, visiting)
-                    self.add_directed_edge(visiting, child)
-                    targets.insert(0, child)
-            seen.add(visiting)
-            print 'marking %s as seen' % visiting
-        return seen
 
 
 def test_maze(routes):
