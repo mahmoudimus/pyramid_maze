@@ -97,7 +97,7 @@ def routes(nodes):
     return root
 
 
-class Ramp(object):
+class Maze(object):
 
     def __init__(self, graph):
         self.graph = graph
@@ -192,10 +192,10 @@ class Graph(object):
         return seen
 
 
-def test_ramp(routes):
+def test_maze(routes):
     routes.draw()
     cards = routes.find('cards')
-    r = Ramp(Graph(routes))
+    r = Maze(Graph(routes))
 
     assert '/root/cards' == r.route(cards)
     assert '/root/mp/cards' == r.route(cards, include=[routes.find('mp')])

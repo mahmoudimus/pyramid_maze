@@ -7,7 +7,7 @@ from setuptools.command.test import test as TestCommand
 version = (
     re
     .compile(r".*__version__ = '(.*?)'", re.S)
-    .match(open('pyramid_ramp/__init__.py').read())
+    .match(open('pyramid_maze/__init__.py').read())
     .group(1)
 )
 
@@ -40,11 +40,12 @@ class PyTest(TestCommand):
         import pytest
         pytest.main(self.test_args)
 
+
 packages = setuptools.find_packages('.', exclude=('tests', 'tests.*'))
 setuptools.setup(
-    name='pyramid_ramp',
+    name='pyramid_maze',
     version=version,
-    url='https://github.com/mahmoudimus/pyramid_ramp',
+    url='https://github.com/mahmoudimus/pyramid_maze',
     author='mahmoudimus',
     author_email='mabdelkader@gmail.com',
     description='',
