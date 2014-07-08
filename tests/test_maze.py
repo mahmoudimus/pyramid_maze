@@ -97,7 +97,7 @@ def routes(nodes):
     return root
 
 
-class Ramp(object):
+class Maze(object):
 
     def __init__(self, graph):
         self.graph = graph
@@ -214,10 +214,10 @@ class Graph(object):
         return seen
 
 
-def test_ramp(routes):
+def test_maze(routes):
     routes.draw()
     cards = routes.find('cards')
-    r = Ramp(Graph(routes))
+    r = Maze(Graph(routes))
 
     def path_to_url(path):
         return '/' + '/'.join(node.name for node in path)
