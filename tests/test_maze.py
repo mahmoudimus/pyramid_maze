@@ -112,7 +112,7 @@ class Maze(object):
             # already statifies our requirements
             return last_node == node and remaining_nodes.issuperset(include)
 
-        dft = DepthFirstTraverser(self.graph, printer)
+        dft = DepthFirst(self.graph, printer)
         return dft.optimal_path(solution_predicate)
 
 
@@ -139,11 +139,11 @@ class Graph(object):
     @property
     def nodes(self):
         if not self._nodes:
-            self._nodes = DepthFirstTraverser(self, printer).nodes
+            self._nodes = DepthFirst(self, printer).nodes
         return self._nodes
 
 
-class GraphTraverser(object):
+class GraphTraversal(object):
 
     def __init__(self, graph, visitor=None):
         self.graph = graph
@@ -154,7 +154,7 @@ class GraphTraverser(object):
         return node
 
 
-class DepthFirstTraverser(GraphTraverser):
+class DepthFirst(GraphTraversal):
 
     @property
     def nodes(self):
@@ -202,42 +202,6 @@ class DepthFirstTraverser(GraphTraverser):
         # return smallest.
         possible_solutions.sort(cmp=lambda x, y: len(x) > len(y))
         return possible_solutions[0]
-
-
-def shortest_paths(graph, destination):
-    """
-    Given a graph, assume that all edges are weighted equally,
-    find the shorest path, minimizing the weight to the desired
-    node.
-
-    """
-    start = graph.root
-    visited = {start: 0}
-    path = {}
-
-    nodes = graph.nodes
-    while nodes:
-        min_node = None
-        for node in nodes:
-            if node in visited:
-                if min_node is None:
-                    min_node = node
-                elif visited[node] < visited[min_node]:
-                    min_node = node
-
-        if min_node is None:
-            break
-
-    nodes.remove(min_node)
-    current_weight = visited[min_node]
-
-    for edge in graph.edges[min_node]:
-        weight = current_weight + graph.distance[(min_node, edge)]
-        if edge not in visited or weight < visited[edge]:
-            visited[edge] = weight
-            path[edge] = min_node
-
-    return visited, path
 
 
 def breadth_first_search(graph):
