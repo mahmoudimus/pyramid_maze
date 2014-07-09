@@ -111,11 +111,7 @@ class Maze(object):
         the leaf ``node``.
 
         """
-        if include is not None:
-            include = set(include)
-        else:
-            include = set()
-        # return depth_first_search(self.graph, node, include)
+        include = set(include) if include else set()
 
         def solution_predicate(path):
             last_node = path[-1]
@@ -254,6 +250,7 @@ def shortest_paths(graph, destination):
             path[edge] = min_node
 
     return visited, path
+
 
 def breadth_first_search(graph):
     targets = [graph.root]
