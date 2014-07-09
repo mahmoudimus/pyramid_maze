@@ -65,10 +65,7 @@ class Node(object):
         return self.name
 
     def __repr__(self):
-        return 'Node(%s, parent=%s)' % (
-            self.name,
-            self.__parent__
-        )
+        return 'Node(%s)' % self.name
 
     def draw(self):
         print '\n' + draw_tree(self)
@@ -118,62 +115,26 @@ class Maze(object):
             include = set(include)
         else:
             include = set()
-        return depth_first_search(self.graph, node, include)
+        # return depth_first_search(self.graph, node, include)
 
-
-def depth_first_search(graph, node, include):
-    # XXX:
-    import pprint
-    print 'NEED TO FIND: ', node
-
-    current_paths = [
-        [graph.root]
-    ]
-
-    while current_paths:
-        print '-' * 10
-        pprint.pprint(current_paths)
-
-        # survived paths in this iteration
-        survived_paths = []
-
-        for path in current_paths:
-
-            # get the last node from the paths
+        def solution_predicate(path):
             last_node = path[-1]
-
             # set of visited nodes in path
-            path_nodes = set(path[:-1])
+            remaining_nodes = set(path[:-1])
 
             # see if there is any path in current_paths
             # already statifies our requirements
-            if last_node == node and path_nodes.issuperset(include):
-                return path
+            return last_node == node and remaining_nodes.issuperset(include)
 
-            for child_node in last_node.children:
-                # TODO: check whether can we statify this node, some nodes like
-                # <account> needs a given object to be statified
-                survived_paths.append(path[:] + [child_node])
-
-        current_paths = survived_paths
-    return current_paths
+        dft = DepthFirstTraverser(self.graph, printer)
+        return dft.optimal_path(solution_predicate)
 
 
-def breadth_first_search(graph):
-    targets = [graph.root]
-    seen = set([graph.root])
-
-    while targets:
-        visiting = targets.pop(0)
-        print 'visiting %s' % visiting
-        for child in visiting.children:
-            if child not in seen:
-                targets.insert(0, child)
-                print 'havent seen %s, child of %s' % (child, visiting)
-            graph.add_directed_edge(visiting, child)
-        seen.add(visiting)
-        print 'marking %s as seen' % visiting
-    return seen
+def printer(node):
+    p = 'visiting: %s' % node
+    if node.__parent__:
+        p += ', child of: %s' % node.__parent__
+    print p
 
 
 class Graph(object):
@@ -182,7 +143,7 @@ class Graph(object):
         self.root = root
         self.edges = defaultdict(list)
         self.distance = {}
-        self._nodes = breadth_first_search(self)
+        self._nodes = None
 
     def draw(self):
         self.root.draw()
@@ -190,12 +151,73 @@ class Graph(object):
     @property
     def nodes(self):
         if not self._nodes:
-            self._nodes = breadth_first_search(self)
+            self._nodes = DepthFirstTraverser(self, printer).nodes
         return self._nodes
 
     def add_directed_edge(self, from_node, to_node, weight=1):
         self.edges[from_node].append(to_node)
         self.distance[(from_node, to_node)] = weight
+
+
+class GraphTraverser(object):
+
+    def __init__(self, graph, visitor=None):
+        self.graph = graph
+        self.visitor = visitor or self._noop
+
+    @staticmethod
+    def _noop(node):
+        return node
+
+
+class DepthFirstTraverser(GraphTraverser):
+
+    @property
+    def nodes(self):
+        """
+        Returns a unique set of nodes seen after traversing the entire graph.
+        """
+        targets = [self.graph.root]
+        uniq_nodes = set(targets)
+
+        while targets:
+            visiting = targets.pop(0)
+            self.visitor(visiting)
+            for child in visiting.children:
+                if child not in uniq_nodes:
+                    targets.append(child)
+            uniq_nodes.add(visiting)
+        return uniq_nodes
+
+    def optimal_path(self, satisfies=None, start=None):
+        if not satisfies:
+            satisfies = self._noop
+
+        if not start:
+            start = self.graph.root
+
+        targets = [[start]]
+        possible_solutions = []
+
+        while targets:
+
+            solution = targets.pop(0)
+            if satisfies(solution):
+                # if we've satisified our reason for traversal
+                # then we've hit a potential path!
+                possible_solutions.append(solution)
+                continue
+
+            last_node = solution[-1]
+            for child in last_node.children:
+                # a possible solution might exist if the current solution's
+                # last node has children, so we append it to explore
+                targets.append(solution[:] + [child])
+
+        # sort possible solutions on length, since weight is assumed to be one,
+        # return smallest.
+        possible_solutions.sort(cmp=lambda x, y: len(x) > len(y))
+        return possible_solutions[0]
 
 
 def shortest_paths(graph, destination):
@@ -232,6 +254,22 @@ def shortest_paths(graph, destination):
             path[edge] = min_node
 
     return visited, path
+
+def breadth_first_search(graph):
+    targets = [graph.root]
+    seen = set([graph.root])
+
+    while targets:
+        visiting = targets.pop(0)
+        print 'visiting %s' % visiting
+        for child in visiting.children:
+            if child not in seen:
+                targets.insert(0, child)
+                print 'havent seen %s, child of %s' % (child, visiting)
+            graph.add_directed_edge(visiting, child)
+        seen.add(visiting)
+        print 'marking %s as seen' % visiting
+    return seen
 
 
 def test_graph(nodes, routes):
