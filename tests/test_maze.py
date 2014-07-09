@@ -42,18 +42,8 @@ class Node(object):
     def __init__(self, name):
         self.name = name
         self.children = []
-        self.__parent__ = None
-
-    @property
-    def parent(self):
-        return self.__parent__
-
-    @parent.setter
-    def parent(self, value):
-        self.__parent__ = value
 
     def add_child(self, node):
-        node.parent = self
         self.children.append(node)
 
     def find(self, child_name):
@@ -134,11 +124,13 @@ def printer(node):
 
 
 class Graph(object):
+    """
+    Represents a collection of :ref:`Node`s. Acts as a fascade to operate
+    on a set of nodes.
 
+    """
     def __init__(self, root):
         self.root = root
-        self.edges = defaultdict(list)
-        self.distance = {}
         self._nodes = None
 
     def draw(self):
@@ -149,10 +141,6 @@ class Graph(object):
         if not self._nodes:
             self._nodes = DepthFirstTraverser(self, printer).nodes
         return self._nodes
-
-    def add_directed_edge(self, from_node, to_node, weight=1):
-        self.edges[from_node].append(to_node)
-        self.distance[(from_node, to_node)] = weight
 
 
 class GraphTraverser(object):
