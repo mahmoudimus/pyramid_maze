@@ -1,10 +1,11 @@
 from __future__ import unicode_literals
-from itertools import count
+from itertools import imap
 from cStringIO import StringIO
-from collections import defaultdict
+
+from pyramid.location import lineage
 
 import pytest
-from pyramid.location import lineage
+
 
 
 def draw_tree(node,
@@ -89,6 +90,27 @@ class Maze(object):
     def __init__(self, graph):
         self.graph = graph
 
+    def _optimal_path(self, is_solution):
+        possible_solutions = []
+
+        def on_visit(path):
+            if not is_solution(path):
+                # current path does not satisfy our constraints, so
+                # a possible solution might exist if the current path's
+                # last node has children, so we return it to be explored
+                return decorate_leaves(path)
+
+            # if we've satisified our reason for traversal
+            # then we've hit a potential path!
+            possible_solutions.append(path)
+
+        _traverse([self.graph.root], on_visit)
+
+        # sort possible solutions on length, since weight is assumed to be one,
+        # return smallest.
+        possible_solutions.sort(cmp=lambda x, y: len(x) > len(y))
+        return possible_solutions[0]
+
     def route(self, node, include=None):
         """
         Given an directed acyclic graph, ``self.graph``, this method
@@ -103,7 +125,7 @@ class Maze(object):
         """
         include = set(include) if include else set()
 
-        def solution_predicate(path):
+        def is_solution(path):
             last_node = path[-1]
             # set of visited nodes in path
             remaining_nodes = set(path[:-1])
@@ -112,8 +134,7 @@ class Maze(object):
             # already statifies our requirements
             return last_node == node and remaining_nodes.issuperset(include)
 
-        dft = DepthFirst(self.graph, printer)
-        return dft.optimal_path(solution_predicate)
+        return self._optimal_path(is_solution)
 
 
 def printer(node):
@@ -138,70 +159,67 @@ class Graph(object):
 
     @property
     def nodes(self):
-        if not self._nodes:
-            self._nodes = DepthFirst(self, printer).nodes
-        return self._nodes
-
-
-class GraphTraversal(object):
-
-    def __init__(self, graph, visitor=None):
-        self.graph = graph
-        self.visitor = visitor or self._noop
-
-    @staticmethod
-    def _noop(node):
-        return node
-
-
-class DepthFirst(GraphTraversal):
-
-    @property
-    def nodes(self):
         """
         Returns a unique set of nodes seen after traversing the entire graph.
         """
-        targets = [self.graph.root]
-        uniq_nodes = set(targets)
+        if self._nodes:
+            return self._nodes
+        uniq_nodes = set()
 
-        while targets:
-            visiting = targets.pop(0)
-            self.visitor(visiting)
-            for child in visiting.children:
-                if child not in uniq_nodes:
-                    targets.append(child)
-            uniq_nodes.add(visiting)
-        return uniq_nodes
+        def on_visit(node):
+            uniq_nodes.add(node)
+            return node
 
-    def optimal_path(self, satisfies=None, start=None):
-        if not satisfies:
-            satisfies = self._noop
+        _traverse(self.root, on_visit)
+        self._nodes = uniq_nodes
+        return self._nodes
 
-        if not start:
-            start = self.graph.root
 
-        targets = [[start]]
-        possible_solutions = []
+def _traverse(start, on_visit):
+    """
+    Performs a depth-first serach on a tree.
 
-        while targets:
+    :param start: The starting node to begin the search
+    :param on_visit: A callback function that will be invoked after visiting
+                     a potential path.
 
-            solution = targets.pop(0)
-            if satisfies(solution):
-                # if we've satisified our reason for traversal
-                # then we've hit a potential path!
-                possible_solutions.append(solution)
-                continue
+                     If this method does not return a path, then the search
+                     will continue to exhaust the next path in the stack.
 
-            last_node = solution[-1]
-            for child in last_node.children:
-                # a possible solution might exist if the current solution's
-                # last node has children, so we append it to explore
-                targets.append(solution[:] + [child])
+                     If a path is returned, it must satisfy a ``children``
+                     iterable attribute. This attribute must yield the
+                     next paths to push on to the stack.
+    :return: None
+    """
+    paths_to_explore = [start]
+    while paths_to_explore:
+        path = paths_to_explore.pop(0)
+        path = on_visit(path)
+        if not path:
+            continue
 
-        # sort possible solutions on length, since weight is assumed to be one,
-        # return smallest.
-        possible_solutions.sort(cmp=lambda x, y: len(x) > len(y))
-        return possible_solutions[0]
+        assert (getattr(path, 'children'),
+                "Path %s must have a iterable attribute 'children'" % (path))
+
+        for child in path.children:
+            paths_to_explore.append(child)
+
+
+def decorate_leaves(path):
+    """
+    Decorates a node's children list with the full absolute path
+    to that node.
+
+    :param path: A list containing individual nodes leading up to the
+                last node.
+    :return: A decorated node that contains a modified children
+             iterable attribute, where every child node has every
+             intermediary node.
+    """
+    ln = path[-1]
+    decorated = Node(ln.name)
+    decorated.children = imap(lambda c: path[:] + [c], ln.children)
+    return decorated
 
 
 def breadth_first_search(graph):
