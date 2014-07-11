@@ -1,8 +1,11 @@
 from __future__ import unicode_literals
 
-from pyramid_maze import Node, Maze, Graph
+from pyramid_maze import Maze, Graph, Node
 
+from webtest import TestApp
 import pytest
+
+from simple_app import Application
 
 
 @pytest.fixture()
@@ -62,12 +65,11 @@ def test_maze(routes):
         ])
     )
 
-#
+
+
 # @pytest.fixture()
 # def app():
-#     from webtest import TestApp
-#     from .testapp import main
-#     app = main({})
+#     app = Application.create()
 #     test_app = TestApp(app)
 #     return test_app
 #

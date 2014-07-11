@@ -1,5 +1,5 @@
 from cStringIO import StringIO
-from itertools import imap
+from collections import Iterable
 
 
 def traverse(start, on_visit):
@@ -25,29 +25,12 @@ def traverse(start, on_visit):
         if not path:
             continue
 
-        assert (getattr(path, 'children'),
-                "Path %s must have a iterable attribute 'children'" % (path))
+        assert isinstance(getattr(path, 'children'), Iterable), (
+            "Path %s must have a iterable attribute 'children'" % path
+        )
 
         for child in path.children:
             paths_to_explore.append(child)
-
-
-def decorate_leaves_with_lineage(path):
-    """
-    Decorates a node's children list with the full absolute path
-    to that node.
-
-    :param path: A list containing the last node seen, prepended with its
-                 lineage.
-
-    :return: A decorated :ref:`Node` that contains a modified children
-             iterable attribute, where every child node is prepended with
-             its lineage (in this case, the path).
-    """
-    ln = path[-1]
-    decorated = Node(ln.name)
-    decorated.children = imap(lambda c: path[:] + [c], ln.children)
-    return decorated
 
 
 def draw_tree(node,
@@ -96,58 +79,3 @@ def breadth_first_search(graph):
         seen.add(visiting)
         print 'marking %s as seen' % visiting
     return seen
-
-
-class Graph(object):
-    """
-    Represents a collection of :ref:`Node`s. Acts as a fascade to operate
-    on a set of nodes.
-
-    """
-    def __init__(self, root):
-        self.root = root
-        self._nodes = None
-
-    def draw(self):
-        self.root.draw()
-
-    @property
-    def nodes(self):
-        """
-        Returns a unique set of nodes seen after traversing the entire graph.
-        """
-        if self._nodes:
-            return self._nodes
-
-        uniq_nodes = set()
-
-        def on_visit(node):
-            uniq_nodes.add(node)
-            return node
-
-        traverse(self.root, on_visit)
-        self._nodes = uniq_nodes
-        return self._nodes
-
-
-class Node(object):
-    def __init__(self, name):
-        self.name = name
-        self.children = []
-
-    def add_child(self, node):
-        self.children.append(node)
-
-    def find(self, child_name):
-        for child in self.children:
-            if child.name == child_name:
-                return child
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return 'Node(%s)' % self.name
-
-    def draw(self):
-        print '\n' + draw_tree(self)
