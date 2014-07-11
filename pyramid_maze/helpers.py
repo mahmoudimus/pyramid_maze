@@ -32,16 +32,17 @@ def traverse(start, on_visit):
             paths_to_explore.append(child)
 
 
-def decorate_leaves(path):
+def decorate_leaves_with_lineage(path):
     """
     Decorates a node's children list with the full absolute path
     to that node.
 
-    :param path: A list containing individual nodes leading up to the
-                last node.
-    :return: A decorated node that contains a modified children
-             iterable attribute, where every child node has every
-             intermediary node.
+    :param path: A list containing the last node seen, prepended with its
+                 lineage.
+
+    :return: A decorated :ref:`Node` that contains a modified children
+             iterable attribute, where every child node is prepended with
+             its lineage (in this case, the path).
     """
     ln = path[-1]
     decorated = Node(ln.name)

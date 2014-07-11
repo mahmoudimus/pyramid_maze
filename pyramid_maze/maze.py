@@ -1,4 +1,4 @@
-from .helpers import decorate_leaves, traverse
+from .helpers import decorate_leaves_with_lineage, traverse
 
 
 class Maze(object):
@@ -14,7 +14,7 @@ class Maze(object):
                 # current path does not satisfy our constraints, so
                 # a possible solution might exist if the current path's
                 # last node has children, so we return it to be explored
-                return decorate_leaves(path)
+                return decorate_leaves_with_lineage(path)
 
             # if we've satisified our reason for traversal
             # then we've hit a potential path!
