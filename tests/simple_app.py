@@ -6,7 +6,7 @@ from pyramid.threadlocal import get_current_registry
 
 import venusian
 
-from pyramid_maze import Node, Graph
+from pyramid_maze import Node, Graph, Maze
 
 
 def nest_under(resource):
@@ -224,6 +224,15 @@ class Controller(object):
         self.request = request
         self.context = context
 
+    def route(self, include=None):
+        include = include or []
+        graph = get_current_registry(self.context).graph
+        maze = Maze(graph)
+        node = graph.root.find(self.resource.__name__)
+        include = [graph.root.find(i.__name__) for i in include]
+        path = maze.route(node, include)
+        return '/' + '/'.join(node.name for node in path)
+
 
 # resources start
 class Root(Resource):
@@ -268,7 +277,12 @@ class DepartmentsController(Controller):
         pass
 
     def show(self):
-        return Response('hallo thar!')
+        path = {
+            'uri': self.route(),
+            'under_corprations_uri': self.route(include=[Corporations])
+        }
+        print path
+        return Response('%s' % path)
 
     def update(self):
         pass
