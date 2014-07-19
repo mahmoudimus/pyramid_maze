@@ -2,6 +2,8 @@ from inspect import getmembers, ismethod
 
 from pyramid.config import Configurator
 from pyramid.response import Response
+from pyramid.threadlocal import get_current_registry
+
 import venusian
 
 from pyramid_maze import Node, Graph
@@ -93,12 +95,12 @@ class Resource(object):
         """
         if not cls:
             return
-        print (
-            'Creating instance of %s while searching for %s (entity?: %s)' %
-            (cls, key, entity)
-        )
+        # print (
+        #     'Creating instance of %s while searching for %s (entity?: %s)' %
+        #     (cls, key, entity)
+        # )
         rv = cls(request=self.request, parent=self, name=key, entity=entity)
-        print 'Created: ', rv
+        # print 'Created: ', rv
         return rv
 
     def __getitem__(self, key):
@@ -240,7 +242,6 @@ class CorporationsController(Controller):
         pass
 
     def show(self):
-        print 'did i get here?'
         return Response('hallo')
 
     def update(self):
@@ -267,8 +268,7 @@ class DepartmentsController(Controller):
         pass
 
     def show(self):
-        print 'did i get here?'
-        return Response('hallo thurrr')
+        return Response('hallo thar!')
 
     def update(self):
         pass
@@ -305,6 +305,4 @@ def make_app(default_settings=None, **overrides):
     config.add_view_predicate('resource', ResourcePredicate)
     config.set_root_factory(root_factory)
     config.scan()
-    print ''
-
     return config.make_wsgi_app()

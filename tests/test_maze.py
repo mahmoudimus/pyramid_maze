@@ -73,7 +73,8 @@ def app():
 
 
 def test_maze_with_resources(app):
-    res = app.get('/Corporations/CR123')
-    print res.body
-    print app.app.registry.graph.draw()
-    print app.app.registry.graph.nodes
+    res = app.get('/Corporations/CR123/Departments/DP456')
+    assert res.status_code == 200
+    assert res.body == 'hallo thar!'
+    assert len(app.app.registry.graph.nodes) == 4
+    app.app.registry.graph.draw()

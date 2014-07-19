@@ -53,6 +53,7 @@ def _draw_tree(node, prefix, child_iter, text_str):
     buf.write('\n')
 
     for index, child in enumerate(children):
+
         if index + 1 == len(children):
             sub_prefix = prefix + '   '
         else:
