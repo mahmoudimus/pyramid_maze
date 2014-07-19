@@ -1,5 +1,5 @@
 from itertools import imap
-from .helpers import traverse, draw_tree
+from .helpers import traverse, draw_tree, convert_to_snake_case
 
 
 class Maze(object):
@@ -55,26 +55,6 @@ class Maze(object):
 
 
 class Node(object):
-    def __init__(self, name):
-        self.name = name
-        self.children = []
-
-    def add_child(self, node):
-        self.children.append(node)
-
-    def find(self, child_name):
-        for child in self.children:
-            if child.name == child_name:
-                return child
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return 'Node(%s)' % self.name
-
-    def draw(self):
-        print '\n' + draw_tree(self)
 
     @classmethod
     def decorate_leaves_with_lineage(cls, path):
@@ -93,6 +73,27 @@ class Node(object):
         decorated = cls(ln.name)
         decorated.children = imap(lambda c: path[:] + [c], ln.children)
         return decorated
+
+    def __init__(self, name=None):
+        self.name = name or convert_to_snake_case(self.__class__.__name__)
+        self.children = []
+
+    def add_child(self, node):
+        self.children.append(node)
+
+    def find(self, child_name):
+        for child in self.children:
+            if child.name == child_name:
+                return child
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return 'Node(%s)' % self.name
+
+    def draw(self):
+        print '\n' + draw_tree(self)
 
 
 class Graph(object):

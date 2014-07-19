@@ -1,5 +1,6 @@
 from cStringIO import StringIO
 from collections import Iterable
+import re
 
 
 def traverse(start, on_visit):
@@ -79,3 +80,7 @@ def breadth_first_search(graph):
         seen.add(visiting)
         print 'marking %s as seen' % visiting
     return seen
+
+
+def convert_to_snake_case(text):
+    return re.sub("(?<=[a-z])([A-Z])", "_\\1", text).lower()

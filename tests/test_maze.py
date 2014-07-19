@@ -5,7 +5,7 @@ from pyramid_maze import Maze, Graph, Node
 from webtest import TestApp
 import pytest
 
-from simple_app import Application
+import simple_app
 
 
 @pytest.fixture()
@@ -65,14 +65,13 @@ def test_maze(routes):
         ])
     )
 
+@pytest.fixture()
+def app():
+    app_ = simple_app.make_app()
+    test_app = TestApp(app_)
+    return test_app
 
 
-# @pytest.fixture()
-# def app():
-#     app = Application.create()
-#     test_app = TestApp(app)
-#     return test_app
-#
-# def test_maze_with_resources(app):
-#     res = app.get('/mp/1/accts/2/cards')
-#     print res.body
+def test_maze_with_resources(app):
+    res = app.get('/Corporations/CR123')
+    print res.body
