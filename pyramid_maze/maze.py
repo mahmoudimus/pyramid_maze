@@ -82,6 +82,8 @@ class Node(object):
         self.children.append(node)
 
     def find(self, child_name):
+        if child_name == self.name:
+            return self
         for child in self.children:
             if child.name == child_name:
                 return child

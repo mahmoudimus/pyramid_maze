@@ -9,7 +9,7 @@ from pyramid_maze import Node, Graph
 
 def nest_under(resource):
 
-    def callback(scanner, name, obj):
+    def callback(scanner, sub_resource_name, subresource):
         try:
             graph = getattr(scanner.config.registry, 'graph')
         except AttributeError:
@@ -17,13 +17,10 @@ def nest_under(resource):
             graph = Graph(n)
             scanner.config.registry.graph = graph
         else:
-            n = graph.root.find(name)
+            n = graph.root.find(resource.__name__)
 
-        for child in resource.nested_resources:
-            n.add_child(Node(child))
-
-        print graph.draw()
-        print name, obj
+        if sub_resource_name in resource.nested_resources:
+            n.add_child(Node(sub_resource_name))
 
     def wrapped(nested_cls):
         resource.nested_resources[nested_cls.__name__] = nested_cls
