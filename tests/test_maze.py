@@ -76,3 +76,4 @@ def test_maze_with_resources(app):
     res = app.get('/Corporations/CR123')
     print res.body
     print app.app.registry.graph.draw()
+    print app.app.registry.graph.nodes

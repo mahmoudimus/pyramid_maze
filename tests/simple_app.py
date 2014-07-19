@@ -20,7 +20,11 @@ def nest_under(resource):
             n = graph.root.find(resource.__name__)
 
         if sub_resource_name in resource.nested_resources:
-            n.add_child(Node(sub_resource_name))
+            sub_node = graph.root.find(sub_resource_name)
+            if sub_node:
+                n.add_child(sub_node)
+            else:
+                n.add_child(Node(sub_resource_name))
 
     def wrapped(nested_cls):
         resource.nested_resources[nested_cls.__name__] = nested_cls
