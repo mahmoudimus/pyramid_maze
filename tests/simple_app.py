@@ -81,7 +81,7 @@ class Resource(object):
     nested_resources = {}
 
     def __init__(self, request, parent=None, name=None, entity=None, **kwargs):
-        self.__name__ = name or 'root'
+        self.__name__ = name or ''
         self.__parent__ = parent
         self.request = request
         self.entity = entity
@@ -143,6 +143,10 @@ class DymamicResource(Resource):
 
     def lookup(self, key):
         return self
+
+    def __resource_url__(self, request, info):
+        print request
+        print info
 
 
 class _ViewBuilder(type):
@@ -225,13 +229,21 @@ class Controller(object):
         self.context = context
 
     def route(self, include=None):
-        include = include or []
-        graph = get_current_registry(self.context).graph
-        maze = Maze(graph)
-        node = graph.root.find(self.resource.__name__)
-        include = [graph.root.find(i.__name__) for i in include]
-        path = maze.route(node, include)
-        return '/' + '/'.join(node.name for node in path)
+        # - give me all the existing nodes (or create them if possible)
+        #   from the context that satisfy self/include
+        # - find shortest parth to hit all nodes
+        # - for each node in path, get the resource_url for the node
+        # - construct final url
+        c = self.request.resource_url(self.context)
+        print c
+        return c
+        # include = include or []
+        # graph = get_current_registry(self.context).graph
+        # maze = Maze(graph)
+        # node = graph.root.find(self.resource.__name__)
+        # include = [graph.root.find(i.__name__) for i in include]
+        # path = maze.route(node, include)
+        # return '/' + '/'.join(node.name for node in path)
 
 
 # resources start
