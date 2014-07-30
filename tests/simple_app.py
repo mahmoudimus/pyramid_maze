@@ -1,4 +1,5 @@
 from inspect import getmembers, ismethod
+import os
 
 from pyramid.config import Configurator
 from pyramid.response import Response
@@ -7,6 +8,49 @@ from pyramid.threadlocal import get_current_registry
 import venusian
 
 from pyramid_maze import Node, Graph, Maze
+
+from sqlalchemy import create_engine
+from sqlalchemy import types as satype
+from sqlalchemy import schema as sa
+from sqlalchemy import orm as saorm
+from sqlalchemy.ext.declarative import declarative_base
+
+
+engine = create_engine('sqlite:///%s/pymaze.db' %
+                       os.path.dirname(os.path.abspath(__file__)))
+Base = declarative_base()
+
+
+class CorporationsModel(Base):
+    __tablename__ = 'corporations'
+    pk = sa.Column(satype.Unicode, primary_key=True)
+    name = sa.Column(satype.Unicode)
+
+
+class DepartmentsModel(Base):
+    __tablename__ = 'departments'
+    pk = sa.Column(satype.Unicode, primary_key=True)
+    name = sa.Column(satype.Unicode)
+    corporation_pk = sa.Column(satype.Unicode, sa.ForeignKey(CorporationsModel.pk))
+
+    corporation = saorm.relationship(CorporationsModel)
+
+
+class EmployeesModel(Base):
+    __tablename__ = 'employees'
+    pk = sa.Column(satype.Unicode, primary_key=True)
+    name = sa.Column(satype.Unicode)
+    department_pk = sa.Column(satype.Unicode, sa.ForeignKey(DepartmentsModel.pk))
+
+    department = saorm.relationship(DepartmentsModel, backref='employees')
+
+
+conn = engine.connect()
+Base.metadata.bind = conn
+
+Session = saorm.sessionmaker(bind=engine)
+ses = Session()
+Base.query = ses.query_property()
 
 
 def nest_under(resource):
@@ -124,7 +168,10 @@ class Resource(object):
         return ctx
 
     def lookup(self, key):
-        return None
+        pass
+
+    def lookup_parent_entity(self, parent_resource):
+        pass
 
     def __repr__(self):
         attributes = dict(
@@ -132,19 +179,16 @@ class Resource(object):
             for key, value in self.__dict__.iteritems()
             if key != '__name__' and value
         )
-        return '<{name}({__name__}): {attributes}>'.format(
-            attributes=attributes,
+        return '<{name}({__name__})>'.format(
             name=self.__class__.__name__,
-            **self.__dict__
+            __name__=self.__name__
         )
 
 
 class DymamicResource(Resource):
 
-    def lookup(self, key):
-        return self
-
     def __resource_url__(self, request, info):
+        return
         print request
         print info
 
@@ -216,6 +260,10 @@ class _ViewBuilder(type):
         return views
 
 
+class NoRouteFound(Exception):
+    pass
+
+
 class Controller(object):
 
     __metaclass__ = _ViewBuilder
@@ -229,26 +277,43 @@ class Controller(object):
         self.context = context
 
     def route(self, include=None):
-        # - give me all the existing nodes (or create them if possible)
-        #   from the context that satisfy self/include
-        # - find shortest parth to hit all nodes
+        # - find shortest parth to hit all nodes given the graph
+        include = include or []
+        graph = get_current_registry(self.context).graph
+        maze = Maze(graph)
+        node = graph.root.find(self.resource.__name__)
+        include = [graph.root.find(i.__name__) for i in include]
+        path_nodes = maze.route(node, include)
+        # - if path is not found, throw
+        if not path_nodes:
+            raise NoRouteFound()
         # - for each node in path, get the resource_url for the node
-        # - construct final url
+        #   from the context that satisfy self/include
+        print path_nodes
+        path = [self.context.entity]
+        for path_node in reversed(path_nodes[:-1]):
+            current_entity = path[-1]
+            if not current_entity:
+                break
+            # assume that each node is nested under some resource that
+            # it has a relation to, so it follows that there exists a
+            # contract that allows us to query the relation
+            parent_entity = current_entity.lookup_parent_entity(path_node)
+            path.append(parent_entity)
+
+        print path
         c = self.request.resource_url(self.context)
+        # - construct final url
         print c
         return c
-        # include = include or []
-        # graph = get_current_registry(self.context).graph
-        # maze = Maze(graph)
-        # node = graph.root.find(self.resource.__name__)
-        # include = [graph.root.find(i.__name__) for i in include]
-        # path = maze.route(node, include)
         # return '/' + '/'.join(node.name for node in path)
 
 
 # resources start
 class Root(Resource):
-    pass
+
+    def lookup(self, key):
+        return self
 
 
 class CorporationsController(Controller):
@@ -275,6 +340,25 @@ class CorporationsController(Controller):
 @nest_under(Root)
 class Corporations(DymamicResource):
     controller = CorporationsController
+    model = CorporationsModel
+
+    def lookup(self, key):
+        return self.model.query.get(key)
+
+    def lookup_parent_entity(self, parent_resource):
+        if parent_resource.name == 'Root':
+            return parent_resource
+
+        # this should really be able to say give me the relationships
+        # associated to this resource..
+        if self.__parent__.entity:
+            parent = self.__parent__.__parent__
+        else:
+            parent = self.__parent__
+
+        if parent.__name__ == parent_resource.name:
+            return parent
+
 
 
 class DepartmentsController(Controller):
@@ -332,3 +416,15 @@ def make_app(default_settings=None, **overrides):
     config.set_root_factory(root_factory)
     config.scan()
     return config.make_wsgi_app()
+
+
+if __name__ == '__main__':
+   Base.metadata.drop_all()
+   Base.metadata.create_all()
+   corporation = CorporationsModel(pk='CR123', name='acme')
+   ses.add(corporation)
+   department = DepartmentsModel(
+       pk='DP456', name='sales', corporation=corporation
+   )
+   ses.add(department)
+   ses.commit()
