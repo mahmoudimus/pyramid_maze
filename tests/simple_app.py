@@ -4,16 +4,15 @@ import os
 from pyramid.config import Configurator
 from pyramid.response import Response
 from pyramid.threadlocal import get_current_registry
-
 import venusian
-
-from pyramid_maze import Node, Graph, Maze
-
 from sqlalchemy import create_engine
 from sqlalchemy import types as satype
 from sqlalchemy import schema as sa
 from sqlalchemy import orm as saorm
+from sqlalchemy.inspection import inspect
 from sqlalchemy.ext.declarative import declarative_base
+
+from pyramid_maze import Node, Graph, Maze
 
 
 engine = create_engine('sqlite:///%s/pymaze.db' %
@@ -21,13 +20,23 @@ engine = create_engine('sqlite:///%s/pymaze.db' %
 Base = declarative_base()
 
 
-class CorporationsModel(Base):
+class RelationFetchMixin(object):
+    def get_relation(self, target_relation):
+        target_relation = target_relation.lower()
+        relationships = inspect(self.__class__).relationships
+        #import ipdb; ipdb.set_trace()
+        for rel in relationships.values():
+            if rel.table.name == target_relation:
+                return getattr(self, rel.key)
+
+
+class CorporationsModel(Base, RelationFetchMixin):
     __tablename__ = 'corporations'
     pk = sa.Column(satype.Unicode, primary_key=True)
     name = sa.Column(satype.Unicode)
 
 
-class DepartmentsModel(Base):
+class DepartmentsModel(Base, RelationFetchMixin):
     __tablename__ = 'departments'
     pk = sa.Column(satype.Unicode, primary_key=True)
     name = sa.Column(satype.Unicode)
@@ -36,7 +45,7 @@ class DepartmentsModel(Base):
     corporation = saorm.relationship(CorporationsModel)
 
 
-class EmployeesModel(Base):
+class EmployeesModel(Base, RelationFetchMixin):
     __tablename__ = 'employees'
     pk = sa.Column(satype.Unicode, primary_key=True)
     name = sa.Column(satype.Unicode)
@@ -48,9 +57,9 @@ class EmployeesModel(Base):
 conn = engine.connect()
 Base.metadata.bind = conn
 
-Session = saorm.sessionmaker(bind=engine)
+Session = saorm.scoped_session(saorm.sessionmaker(bind=engine))
 ses = Session()
-Base.query = ses.query_property()
+Base.query = Session.query_property()
 
 
 def nest_under(resource):
@@ -74,7 +83,7 @@ def nest_under(resource):
 
     def wrapped(nested_cls):
         resource.nested_resources[nested_cls.__name__] = nested_cls
-
+        nested_cls.parents[resource.__name__] = resource
         venusian.attach(nested_cls, callback)
         return nested_cls
 
@@ -90,15 +99,17 @@ class ResourcePredicate(object):
     """
 
     def __init__(self, val, config):
-        self.val = val
+        self.resource_cls = val
 
     def text(self):
-        return 'val=%s' % (self.val,)
+        return 'val=%s' % (self.resource_cls,)
 
     phash = text
 
     def __call__(self, context, request):
-        return context.entity and isinstance(context.entity, self.val)
+        # print '--', self.resource_cls
+        # print '--', context.entity
+        return self.resource_cls.is_item(context.entity)
 
 
 class _LinkController(type):
@@ -123,6 +134,7 @@ class Resource(object):
     controller = None
 
     nested_resources = {}
+    parents = {}
 
     def __init__(self, request, parent=None, name=None, entity=None, **kwargs):
         self.__name__ = name or ''
@@ -144,7 +156,7 @@ class Resource(object):
         #     (cls, key, entity)
         # )
         rv = cls(request=self.request, parent=self, name=key, entity=entity)
-        # print 'Created: ', rv
+        # print 'Created: ', rv, entity
         return rv
 
     def __getitem__(self, key):
@@ -167,7 +179,16 @@ class Resource(object):
         ctx = self._create_resource_context(ctx_cls, key, entity)
         return ctx
 
-    def lookup(self, key):
+    @classmethod
+    def lookup(cls, key):
+        pass
+
+    @classmethod
+    def is_item(cls, entity):
+        """
+        Attempts to identify if `entity` is an instantiated item of the
+        resource.
+        """
         pass
 
     def lookup_parent_entity(self, parent_resource):
@@ -185,7 +206,55 @@ class Resource(object):
         )
 
 
+class NotFound(Exception):
+    pass
+
+
 class DymamicResource(Resource):
+
+    model = None
+
+    @classmethod
+    def lookup(cls, key):
+        if not cls.model:
+            msg = (
+                "Couldn't lookup {0:s} with pk={1:s}. Is lookup() implemented?"
+                .format(cls, key))
+            raise NotFound(msg)
+        return cls.model.query.get(key)
+
+    @classmethod
+    def is_item(cls, entity):
+        if not entity:
+            return False
+        return isinstance(entity, cls.model)
+
+    def lookup_parent_entity(self, parent_resource):
+        # XXX: this should really be an identity check not a string equals
+        if parent_resource.name == 'Root':
+            return parent_resource
+        print 'looking for: %s (i am %s)' % (parent_resource, self)
+        # this should really be able to say give me the relationships
+        # associated to this resource..
+        #
+        # there needs to be a way to maintain relationships between resources
+        # and they delegate to the data store underneath
+        #
+        # dp.__table__.foreign_keys
+        for related_object_name, related_object in self.parents.iteritems():
+            print 'parent of %s is %s' % (self, related_object)
+            # if the type of the parent_resource is the same as the
+            # related object, return that
+            if related_object_name == parent_resource.name:
+                parent_entity = self.entity.get_relation(related_object_name)
+                print 'found parent: ', parent_entity
+                parent_object = related_object(
+                    request=self.request,
+                    parent=related_object,
+                    name=parent_entity.pk,
+                    entity=parent_entity
+                )
+                return parent_object
 
     def __resource_url__(self, request, info):
         return
@@ -290,7 +359,8 @@ class Controller(object):
         # - for each node in path, get the resource_url for the node
         #   from the context that satisfy self/include
         print path_nodes
-        path = [self.context.entity]
+        print self.context
+        path = [self.context]
         for path_node in reversed(path_nodes[:-1]):
             current_entity = path[-1]
             if not current_entity:
@@ -312,8 +382,9 @@ class Controller(object):
 # resources start
 class Root(Resource):
 
-    def lookup(self, key):
-        return self
+    @classmethod
+    def lookup(cls, key):
+        return cls
 
 
 class CorporationsController(Controller):
@@ -337,28 +408,28 @@ class CorporationsController(Controller):
         pass
 
 
+# def relationship(*args):
+#     return
+#
+#
+# class _Corporations(DymamicResource):
+#     controller = CorporationsController
+#     model = CorporationsModel
+#
+#     root = relationship('Root')
+#     relationships = {
+#
+#         'root': Root,
+#     }
+#
+#
+# relationship(_Corporations, Root)
+# relationship(_Corporations, )
+
 @nest_under(Root)
 class Corporations(DymamicResource):
     controller = CorporationsController
     model = CorporationsModel
-
-    def lookup(self, key):
-        return self.model.query.get(key)
-
-    def lookup_parent_entity(self, parent_resource):
-        if parent_resource.name == 'Root':
-            return parent_resource
-
-        # this should really be able to say give me the relationships
-        # associated to this resource..
-        if self.__parent__.entity:
-            parent = self.__parent__.__parent__
-        else:
-            parent = self.__parent__
-
-        if parent.__name__ == parent_resource.name:
-            return parent
-
 
 
 class DepartmentsController(Controller):
@@ -391,6 +462,8 @@ class DepartmentsController(Controller):
 @nest_under(Root)
 class Departments(DymamicResource):
     controller = DepartmentsController
+
+    model = DepartmentsModel
 
 
 @nest_under(Departments)
