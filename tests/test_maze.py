@@ -75,7 +75,10 @@ def app():
 def test_maze_with_resources(app):
     res = app.get('/Corporations/CR123/Departments/DP456')
     assert res.status_code == 200
-    assert res.body == 'hallo thar!'
+    assert res.json == {
+        'uri': '/Departments/DP456',
+        'under_corporations_uri': '/Corporations/CR123/Departments/DP456'
+    }
 
 
 def test_maze_graph_construction(app):

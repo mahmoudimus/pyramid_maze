@@ -1,16 +1,18 @@
 from inspect import getmembers, ismethod
 import os
+import urlparse
 
 from pyramid.config import Configurator
+from pyramid.renderers import render_to_response
 from pyramid.response import Response
 from pyramid.threadlocal import get_current_registry
-import venusian
 from sqlalchemy import create_engine
 from sqlalchemy import types as satype
 from sqlalchemy import schema as sa
 from sqlalchemy import orm as saorm
 from sqlalchemy.inspection import inspect
 from sqlalchemy.ext.declarative import declarative_base
+import venusian
 
 from pyramid_maze import Node, Graph, Maze
 
@@ -24,7 +26,6 @@ class RelationFetchMixin(object):
     def get_relation(self, target_relation):
         target_relation = target_relation.lower()
         relationships = inspect(self.__class__).relationships
-        #import ipdb; ipdb.set_trace()
         for rel in relationships.values():
             if rel.table.name == target_relation:
                 return getattr(self, rel.key)
@@ -194,6 +195,10 @@ class Resource(object):
     def lookup_parent_entity(self, parent_resource):
         pass
 
+    def __resource_url__(self, request, info):
+        #return urlparse.urljoin(info['physical_path'], info['virtual_path'])
+        return ''
+
     def __repr__(self):
         attributes = dict(
             (key, value)
@@ -232,8 +237,8 @@ class DymamicResource(Resource):
     def lookup_parent_entity(self, parent_resource):
         # XXX: this should really be an identity check not a string equals
         if parent_resource.name == 'Root':
-            return parent_resource
-        print 'looking for: %s (i am %s)' % (parent_resource, self)
+            return self.request.root
+        # print 'looking for: %s (i am %s)' % (parent_resource, self)
         # this should really be able to say give me the relationships
         # associated to this resource..
         #
@@ -242,12 +247,12 @@ class DymamicResource(Resource):
         #
         # dp.__table__.foreign_keys
         for related_object_name, related_object in self.parents.iteritems():
-            print 'parent of %s is %s' % (self, related_object)
+            # print 'parent of %s is %s' % (self, related_object)
             # if the type of the parent_resource is the same as the
             # related object, return that
             if related_object_name == parent_resource.name:
                 parent_entity = self.entity.get_relation(related_object_name)
-                print 'found parent: ', parent_entity
+                # print 'found parent: ', parent_entity
                 parent_object = related_object(
                     request=self.request,
                     parent=related_object,
@@ -257,9 +262,7 @@ class DymamicResource(Resource):
                 return parent_object
 
     def __resource_url__(self, request, info):
-        return
-        print request
-        print info
+        return '/'.join([self.__parent__.__name__, self.entity.pk])
 
 
 class _ViewBuilder(type):
@@ -358,8 +361,6 @@ class Controller(object):
             raise NoRouteFound()
         # - for each node in path, get the resource_url for the node
         #   from the context that satisfy self/include
-        print path_nodes
-        print self.context
         path = [self.context]
         for path_node in reversed(path_nodes[:-1]):
             current_entity = path[-1]
@@ -371,20 +372,15 @@ class Controller(object):
             parent_entity = current_entity.lookup_parent_entity(path_node)
             path.append(parent_entity)
 
-        print path
-        c = self.request.resource_url(self.context)
-        # - construct final url
-        print c
-        return c
-        # return '/' + '/'.join(node.name for node in path)
+        paths = map(self.request.resource_url, reversed(path))
+        return '/'.join(paths)
 
 
 # resources start
 class Root(Resource):
-
-    @classmethod
-    def lookup(cls, key):
-        return cls
+    """
+    The resource root that is the start of the graph's traversal
+    """
 
 
 class CorporationsController(Controller):
@@ -399,7 +395,7 @@ class CorporationsController(Controller):
         pass
 
     def show(self):
-        return Response('hallo')
+        return render_to_response('string', 'hallo', request=self.request)
 
     def update(self):
         pass
@@ -446,10 +442,9 @@ class DepartmentsController(Controller):
     def show(self):
         path = {
             'uri': self.route(),
-            'under_corprations_uri': self.route(include=[Corporations])
+            'under_corporations_uri': self.route(include=[Corporations])
         }
-        print path
-        return Response('%s' % path)
+        return render_to_response('json', path, request=self.request)
 
     def update(self):
         pass
@@ -492,12 +487,12 @@ def make_app(default_settings=None, **overrides):
 
 
 if __name__ == '__main__':
-   Base.metadata.drop_all()
-   Base.metadata.create_all()
-   corporation = CorporationsModel(pk='CR123', name='acme')
-   ses.add(corporation)
-   department = DepartmentsModel(
-       pk='DP456', name='sales', corporation=corporation
-   )
-   ses.add(department)
-   ses.commit()
+    Base.metadata.drop_all()
+    Base.metadata.create_all()
+    corporation = CorporationsModel(pk='CR123', name='acme')
+    ses.add(corporation)
+    department = DepartmentsModel(
+        pk='DP456', name='sales', corporation=corporation
+    )
+    ses.add(department)
+    ses.commit()
