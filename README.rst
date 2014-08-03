@@ -22,6 +22,15 @@ Install
    pip install pyramid_maze
 
 
+Tests
+-----
+
+.. code::
+
+   pip install pyramid_maze[tests]
+   tox
+
+
 License
 -------
 
