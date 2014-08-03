@@ -1,2 +1,1 @@
-recursive-include extras/db *
-recursive-exclude extras *.py[c|o]
+include README.rst

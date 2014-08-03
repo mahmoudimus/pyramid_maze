@@ -37,10 +37,11 @@ install_requires = [
 extras_require = {
     'tests': [
         'pytest >=2.5.2,<2.6',
-        'tox',
-        'pytest_pyramid >= 0.1.1',
-        'mock >=1.0,<2.0',
         'pytest-cov >=1.7,<2.0',
+        'webtest',
+        'sqlalchemy==0.9.7',
+        'tox',
+        'mock >=1.0,<2.0',
     ],
 }
 
@@ -67,7 +68,8 @@ setuptools.setup(
     url='https://github.com/mahmoudimus/pyramid_maze',
     author='mahmoudimus',
     author_email='mabdelkader@gmail.com',
-    description='A url map route generator based on graph theory http://mahmoudimus.com',
+    description=("A url route generator for Pyramid's traversal, based on "
+                 "graph theory"),
     long_description='',
     platforms='any',
     include_package_data=True,

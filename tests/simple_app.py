@@ -481,15 +481,3 @@ def make_app(default_settings=None, **overrides):
     config.set_root_factory(root_factory)
     config.scan()
     return config.make_wsgi_app()
-
-
-if __name__ == '__main__':
-    Base.metadata.drop_all()
-    Base.metadata.create_all()
-    corporation = CorporationsModel(pk='CR123', name='acme')
-    ses.add(corporation)
-    department = DepartmentsModel(
-        pk='DP456', name='sales', corporation=corporation
-    )
-    ses.add(department)
-    ses.commit()
