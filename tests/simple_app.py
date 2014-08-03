@@ -38,7 +38,8 @@ class DepartmentsModel(Base, RelationFetchMixin):
     __tablename__ = 'departments'
     pk = sa.Column(satype.Unicode, primary_key=True)
     name = sa.Column(satype.Unicode)
-    corporation_pk = sa.Column(satype.Unicode, sa.ForeignKey(CorporationsModel.pk))
+    corporation_pk = sa.Column(satype.Unicode,
+                               sa.ForeignKey(CorporationsModel.pk))
 
     corporation = saorm.relationship(CorporationsModel)
 
@@ -47,7 +48,8 @@ class EmployeesModel(Base, RelationFetchMixin):
     __tablename__ = 'employees'
     pk = sa.Column(satype.Unicode, primary_key=True)
     name = sa.Column(satype.Unicode)
-    department_pk = sa.Column(satype.Unicode, sa.ForeignKey(DepartmentsModel.pk))
+    department_pk = sa.Column(satype.Unicode,
+                              sa.ForeignKey(DepartmentsModel.pk))
 
     department = saorm.relationship(DepartmentsModel, backref='employees')
 

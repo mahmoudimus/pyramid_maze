@@ -65,6 +65,7 @@ def test_maze(routes):
         ])
     )
 
+
 @pytest.fixture(scope='module', autouse=True)
 def create_models():
     simple_app.Base.metadata.drop_all()
