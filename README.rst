@@ -10,8 +10,8 @@ One of its main features is that it respects sub-resources.
 .. image:: https://travis-ci.org/mahmoudimus/pyramid_maze.png?branch=master
    :target: https://travis-ci.org/mahmoudimus/pyramid_maze
 
-.. image:: https://coveralls.io/repos/mahmoudimus/pyramid_maze/badge.png
-   :target: https://coveralls.io/r/mahmoudimus/pyramid_maze
+.. image:: https://coveralls.io/repos/mahmoudimus/pyramid_maze/badge.png?branch=master
+   :target: https://coveralls.io/r/mahmoudimus/pyramid_maze?branch=master
 
 
 Install
