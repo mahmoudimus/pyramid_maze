@@ -65,6 +65,7 @@ def test_maze(routes):
         ])
     )
 
+
 @pytest.fixture()
 def app():
     app_ = simple_app.make_app()
