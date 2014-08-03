@@ -1,15 +1,12 @@
 from inspect import getmembers, ismethod
 import os
-import urlparse
 
 from pyramid.config import Configurator
 from pyramid.renderers import render_to_response
-from pyramid.response import Response
 from pyramid.threadlocal import get_current_registry
-from sqlalchemy import create_engine
-from sqlalchemy import types as satype
-from sqlalchemy import schema as sa
-from sqlalchemy import orm as saorm
+from sqlalchemy import (
+    create_engine, types as satype, schema as sa, orm as saorm
+)
 from sqlalchemy.inspection import inspect
 from sqlalchemy.ext.declarative import declarative_base
 import venusian

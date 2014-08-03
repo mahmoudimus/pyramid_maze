@@ -1,15 +1,34 @@
+import ast
+import codecs
+import os
 import re
 
 import setuptools
 from setuptools.command.test import test as TestCommand
 
+here = os.path.abspath(os.path.dirname(__file__))
 
-version = (
-    re
-    .compile(r".*__version__ = '(.*?)'", re.S)
-    .match(open('pyramid_maze/__init__.py').read())
-    .group(1)
-)
+
+class VersionFinder(ast.NodeVisitor):
+    def __init__(self):
+        self.version = None
+
+    def visit_Assign(self, node):
+        if node.targets[0].id == '__version__':
+            self.version = node.value.s
+
+
+def read(*parts):
+    return codecs.open(os.path.join(here, *parts), 'r').read()
+
+
+def find_version(*parts):
+    finder = VersionFinder()
+    finder.visit(ast.parse(read(*parts)))
+    return finder.version
+
+
+version = find_version('pyramid_maze', '__init__.py')
 
 install_requires = [
     'pyramid >=1.5.1,<1.6.0',
