@@ -67,7 +67,7 @@ setuptools.setup(
     url='https://github.com/mahmoudimus/pyramid_maze',
     author='mahmoudimus',
     author_email='mabdelkader@gmail.com',
-    description='',
+    description='A url map route generator based on graph theory http://mahmoudimus.com',
     long_description='',
     platforms='any',
     include_package_data=True,
