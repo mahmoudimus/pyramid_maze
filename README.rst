@@ -25,9 +25,11 @@ Install
 Tests
 -----
 
+First, clone repository and change into the directory. ``setup.py`` should be located in the directory. Then type:
+
 .. code::
 
-   pip install pyramid_maze[tests]
+   pip install -e '.[tests]'
    tox
 
 
