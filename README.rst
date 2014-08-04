@@ -58,3 +58,4 @@ Contributors
 ------------
 
 - `@mahmoudimus <https://github.com/mahmoudimus>`_
+- `@victorlin <https://github.com/victorlin>`_
